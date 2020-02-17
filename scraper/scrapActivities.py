@@ -10,7 +10,7 @@ pageNum = 0
 with open('activities.csv', 'w', newline='') as csvfile:
 
     writer = csv.writer(csvfile, dialect='excel')
-    writer.writerow(['Facility', 'Facility-Activity', 'Date', 'Time', 'Details', 'details-link'])
+    writer.writerow(['Facility', 'Facility-link', 'Facility-Activity', 'Date', 'Time', 'Details', 'details-link'])
     while True:
         url = 'https://ottawa.ca/en/recreation-and-parks/drop-in-programs?ignore_f_params=1&page=' + str(pageNum)
         response = requests.get(url)
