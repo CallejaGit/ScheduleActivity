@@ -7,7 +7,7 @@ import csv
 
 
 pageNum = 0
-with open('activities.csv', 'w', newline='') as csvfile:
+with open('activities.csv', 'w', newline='', encoding='utf-8') as csvfile:
 
     writer = csv.writer(csvfile, dialect='excel')
     writer.writerow(['Facility', 'Facility-link', 'Facility-Activity', 'Date', 'Time', 'Details', 'details-link'])
