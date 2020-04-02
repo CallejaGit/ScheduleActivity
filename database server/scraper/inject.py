@@ -6,7 +6,9 @@ import csv
 db = MySQLdb.connect(host="localhost",    # your host, usually localhost
                      user="root",         # your username
                      passwd="admin",  # your password
-                     db="Schedules")        # name of the data base
+                     db="Schedules",        # name of the data base
+                     use_unicode=True, 
+                     charset="utf8")
 
 with open('activitiesForDB.csv', 'r') as file:
     reader = csv.reader(file)
