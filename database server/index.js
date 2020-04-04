@@ -30,24 +30,34 @@ var server = app.listen(3000, "127.0.0.1", function(){
     console.log("Example app listening at http://%s:%s", host, port)
 })
 
+var formatRes = (results, filter) => {
+    formatted = {};
+    formatted[filter] = [];
+    results.forEach(element => {
+        formatted[filter].push(element[filter])
+    });
+
+    return formatted;
+}
+
 app.get('/activities', function(req, res) {
     connection.query('SELECT DISTINCT `activity` FROM `schedule2020` ', function(error, results, fields){
-         if (error) throw error;
-         res.end(JSON.stringify(results));
+        if (error) throw error;
+        res.json(formatRes(results, "activity"));
     });
 });
 
 app.get('/facility', function(req, res) {
     connection.query('SELECT DISTINCT `facility` FROM `schedule2020` ', function(error, results, fields){
-         if (error) throw error;
-         res.end(JSON.stringify(results));
+        if (error) throw error;
+        res.json(formatRes(results, "facility"));
     });
 });
 
 app.get('/date', function(req, res) {
     connection.query('SELECT DISTINCT `date` FROM `schedule2020` ', function(error, results, fields){
-         if (error) throw error;
-         res.end(JSON.stringify(results));
+        if (error) throw error;
+        res.json(formatRes(results, "date"));
     });
 });
 
