@@ -40,7 +40,7 @@ var formatRes = (results, filter) => {
     return formatted;
 }
 
-app.get('/activities', function(req, res) {
+app.get('/activity', function(req, res) {
     connection.query('SELECT DISTINCT `activity` FROM `schedule2020` ', function(error, results, fields){
         if (error) throw error;
         res.json(formatRes(results, "activity"));
@@ -80,9 +80,3 @@ app.get('/query', (req, res) => {
     }
 
 });
-
-// var app = http.createServer(function(req,res){
-//     res.setHeader('Content-Type', 'application/json');
-//     res.end(JSON.stringify({ a: 1 }));
-// });
-// app.listen(3000);
