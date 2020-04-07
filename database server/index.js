@@ -30,12 +30,24 @@ var server = app.listen(3000, "127.0.0.1", function(){
     console.log("Example app listening at http://%s:%s", host, port)
 })
 
-var formatRes = (results, filter) => {
-    formatted = {};
-    formatted[filter] = [];
-    results.forEach(element => {
-        formatted[filter].push(element[filter])
-    });
+var formatRes = (results, filter = undefined) => {
+    formatted = {'status code': 200,
+                    'amount': 0};
+    if (filter != undefined) {
+        formatted[filter] = [];
+        results.forEach(element => {
+            formatted[filter].push(element[filter])
+            formatted.amount++;
+        });
+    } else {
+        formatted["data"] = []
+        results = results.map(v => Object.assign({}, v));
+        results.forEach(element => {
+            formatted.data.push(element)
+            formatted.amount++;
+        });
+    }
+
 
     return formatted;
 }
@@ -67,12 +79,12 @@ app.get('/query', (req, res) => {
     var order = req.query.order; // order == undefined if not used
     var sort = req.query.sort;
 
-    if (order == undefined) {
+    if (order == undefined && sort == undefined) {
         connection.query('SELECT * FROM `schedule2020` ORDER BY `date` ASC LIMIT ' + start + ',' + amount, function(error, results, fields){
             if (error) throw error;
-            res.end(JSON.stringify(results));
+            res.json(formatRes(results));
         })
-    } else if (order != undefined) {
+    } else if (order != undefined && sort == undefined) {
         connection.query('SELECT * FROM `schedule2020` ORDER BY `' + order + '` ' + sort + ' LIMIT ' + start + ',' + amount, function(error, results, fields){
             if (error) throw error;
             res.end(JSON.stringify(results));
