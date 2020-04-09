@@ -2,7 +2,8 @@
 var express = require('express');
 var app = express();
 var mysql = require('mysql');
-var bodyParser = require('body-parser')
+var bodyParser = require('body-parser');
+var cors = require('cors')
 
 // create MYSQL connection in Nodejs
 var connection = mysql.createConnection({
@@ -21,7 +22,10 @@ connection.connect(function(err) {
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
     extended: true
-}))
+}));
+
+app.use(cors())
+// app.use(cors({ origin: true, credentials: true }));
 
 var server = app.listen(3000, "127.0.0.1", function(){
     var host = server.address().address
@@ -32,7 +36,8 @@ var server = app.listen(3000, "127.0.0.1", function(){
 
 var formatRes = (results, filter = undefined) => {
     formatted = {'status code': 200,
-                    'amount': 0};
+                    'amount': 0,
+                    'total': 0};
     if (filter != undefined) {
         formatted[filter] = [];
         results.forEach(element => {
@@ -43,13 +48,19 @@ var formatRes = (results, filter = undefined) => {
         formatted["data"] = []
         results = results.map(v => Object.assign({}, v));
         results.forEach(element => {
-            formatted.data.push(element)
+            results.forEach(element => { element.date = String(element.date).substring(0,15) });
+            formatted.data.push(element);
             formatted.amount++;
         });
     }
 
-
     return formatted;
+}
+
+async function getTotal(formatted) {
+    connection.query('SELECT COUNT(*) FROM schedule2020', (err, res) => {
+        formatted['total'] = results[0]['COUNT(*)']
+    });
 }
 
 app.get('/activity', function(req, res) {

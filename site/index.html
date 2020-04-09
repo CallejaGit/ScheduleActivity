@@ -8,9 +8,24 @@
 <body>
 
     <div ng-app="myApp" ng-controller="myCtrl">
-
-    <p>Today's welcome message is:</p>
-    <h1>{{myWelcome}}</h1>
+        <table class="table table-striped">
+            <thread>
+                <tr>
+                    <th scope="col">Facility</th>
+                    <th scope="col">Activity</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Start Time</th>
+                    <th scope="col">End Time</th>
+                </tr>
+            </thread>
+            <tr ng-repeat="x in names">
+                <td>{{ x.facility }}</td>
+                <td>{{ x.activity }}</td>
+                <td>{{ x.date }}</td>
+                <td>{{ x.startTime }}</td>
+                <td>{{ x.endTime }}</td>
+            </tr>
+        </table>
 
     </div>
 
