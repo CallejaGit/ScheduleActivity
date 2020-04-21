@@ -57,21 +57,6 @@ var formatRes = (results, filter = undefined) => {
     return formatted;
 }
 
-var sqlResults = ((results, filter = undefined) => {
-    return new Promise((resolve, reject) => {
-        var formatted = formatRes(results, filter)
-        if (formatted != undefined) {
-           resolve(formatted) 
-        }
-    })
-})
-
-// async function getTotal(formatted) {
-//     connection.query('SELECT COUNT(*) FROM schedule2020', (err, res) => {
-//     formatted['total'] = results[0]['COUNT(*)']
-//     });
-// }
-
 app.get('/activity', function(req, res) {
     connection.query('SELECT DISTINCT `activity` FROM `schedule2020` ', function(error, results, fields){
         if (error) throw error;
@@ -97,7 +82,9 @@ app.get('/query', (req, res) => {
     var start = req.query.start;
     var amount = req.query.amount;
     var order = req.query.order; // order == undefined if not used
-    var sort = req.query.sort;
+    var table = req.query.table;
+    // var facility = req.query.facility.split(',');
+    // var activity = req.query.activity.split(',');
 
     var data = {
         'status code': 200,
@@ -105,7 +92,7 @@ app.get('/query', (req, res) => {
         'total': 0
     }
 
-    if (order == undefined && sort == undefined) {
+    if (order == undefined && table == undefined) {
         connection.query('SELECT * FROM `schedule2020` ORDER BY `date` ASC LIMIT ' + start + ',' + amount, function(error, results, fields){
             data['position'] = Number(start);
             data['data'] = [];
@@ -116,8 +103,8 @@ app.get('/query', (req, res) => {
                 });
             })            
         })
-    } else if (order != undefined && sort == undefined) {
-        connection.query('SELECT * FROM `schedule2020` ORDER BY `' + order + '` ' + sort + ' LIMIT ' + start + ',' + amount, function(error, results, fields){
+    } else if (order != undefined && table != undefined) {
+        connection.query('SELECT * FROM `schedule2020` ORDER BY `' + table + '` ' + order + ' LIMIT ' + start + ',' + amount, function(error, results, fields){
             data['position'] = Number(start);
             data['data'] = [];
             formatResults(data, results).then((data)=> {
@@ -130,7 +117,75 @@ app.get('/query', (req, res) => {
     }
 });
 
+/**
+ * Formats paramenters to a ready mySQL string
+ * 
+ * @param {number} start starting page
+ * @param {number} amount amount to return
+ * @param {String} order either DESC or ASC
+ * @param {String} table name of the table to be ordered
+ * @param {array} facility list of facilities
+ * @param {number} day 1=sunday, ...
+ * @param {String} startTime in HH:MM:SS format
+ * @param {String} endTime in HH:MM:SS format
+ */
+var formQuery = (start, amount, order, table, facility, day, startTime, endTime) => {
+    var query = 'SELECT * FROM `schedule2020` '
 
+    if (facility != undefined) {
+        
+        if (query.length == 29) { query+= ' WHERE'}
+        query += ' (';
+
+        for (var i = 0; i < facility.length; i++){
+            if (i !== facility.length - 1) {
+                query += '`facility`=\'' + facility[i] + '\' OR ';
+            } if (i === facility.length - 1) {
+                query += '`facility`=\'' + facility[i] + '\') ';
+            }
+        }
+    }
+
+    if (day != undefined) {
+
+        query.length == 29 ? query+= ' WHERE' : query += ' AND'
+        query += ' (';
+
+        for (var i = 0; i < day.length; i++){
+            if (i !== day.length - 1) {
+                query += ' DAYOFWEEK(`date`)=' + day[i] + ' OR';
+            } if (i === day.length - 1) {
+                query += ' DAYOFWEEK(`date`)=' + day[i] + ')';
+            }
+        }
+    }
+    
+    if (startTime != undefined) {
+
+        query.length == 29 ? query+= ' WHERE' : query += ' AND'
+        query += ' (`startTime` > CAST(+\'' + startTime + '\' AS time) AND `endTime` < CAST(\'' + endTime + '\' AS time))';
+    }
+
+    if (order == undefined) {
+        query += ' ORDER BY `date` ASC LIMIT ' + start + ', ' + amount
+    } else if (order != undefined) {
+        query += ' ORDER BY `' + table + '` ' + order + ' LIMIT ' + start + ', ' + amount
+    }
+    
+    return query;
+}
+
+// console.log(formQuery(0, 10, 'ASC', 'date', ['facilityA', 'facilityB'], undefined, undefined, undefined))
+
+/**
+ * Formats values into a list
+ */
+var formatValues = (values) => values.split(',');
+ 
+
+/** 
+ * Formats data from the mysql object into a list of entries
+ */
 var formatData = (data, results, filter = undefined) => {
     if (filter != undefined) {
         data[filter] = [];
