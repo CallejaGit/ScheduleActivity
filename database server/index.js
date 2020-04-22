@@ -78,13 +78,24 @@ app.get('/date', function(req, res) {
     });
 });
 
+/**
+ * /query takes parameters for querying the database
+ * 
+ * start, amount is mandatory
+ * facility, activity,day are a list
+ * 
+ * use %20 for spaces in the names
+ */
 app.get('/query', (req, res) => {
     var start = req.query.start;
     var amount = req.query.amount;
-    var order = req.query.order; // order == undefined if not used
+    var order = req.query.order; 
     var table = req.query.table;
-    // var facility = req.query.facility.split(',');
-    // var activity = req.query.activity.split(',');
+    var startTime = req.query.startTime;
+    var endTime = req.query.endTime;
+    var facility = req.query.facility ? req.query.facility.split(','): undefined;
+    var activity = req.query.activity ? req.query.activity.split(','): undefined;
+    var day = req.query.day ? req.query.day.split(','): undefined;
 
     var data = {
         'status code': 200,
@@ -92,29 +103,18 @@ app.get('/query', (req, res) => {
         'total': 0
     }
 
-    if (order == undefined && table == undefined) {
-        connection.query('SELECT * FROM `schedule2020` ORDER BY `date` ASC LIMIT ' + start + ',' + amount, function(error, results, fields){
-            data['position'] = Number(start);
-            data['data'] = [];
-            formatResults(data, results).then((data)=> {
-                connection.query('SELECT COUNT(*) FROM schedule2020', (err, res2) => {
-                    data['total'] = res2[0]['COUNT(*)'];
-                    res.json(data)
-                });
-            })            
+    var query = formQuery(start, amount, order, table, facility, day, startTime, endTime, activity)     
+
+    connection.query(query.query, function(error, results, fields){
+        data['position'] = Number(start);
+        data['data'] = [];
+        formatResults(data, results).then((data) => {
+            connection.query(query.queryCount, (err, res2) => {
+                data['total'] = res2[0]['COUNT(*)'];
+                res.json(data)
+            })
         })
-    } else if (order != undefined && table != undefined) {
-        connection.query('SELECT * FROM `schedule2020` ORDER BY `' + table + '` ' + order + ' LIMIT ' + start + ',' + amount, function(error, results, fields){
-            data['position'] = Number(start);
-            data['data'] = [];
-            formatResults(data, results).then((data)=> {
-                connection.query('SELECT COUNT(*) FROM schedule2020', (err, res2) => {
-                    data['total'] = res2[0]['COUNT(*)'];
-                    res.json(data)
-                });
-            })            
-        })
-    }
+    })
 });
 
 /**
@@ -129,53 +129,79 @@ app.get('/query', (req, res) => {
  * @param {String} startTime in HH:MM:SS format
  * @param {String} endTime in HH:MM:SS format
  */
-var formQuery = (start, amount, order, table, facility, day, startTime, endTime) => {
+var formQuery = (start, amount, order, table, facility, day, startTime, endTime, activity) => {
     var query = 'SELECT * FROM `schedule2020` '
+    var queryCount = 'SELECT COUNT(*) FROM `schedule2020` '
 
     if (facility != undefined) {
         
-        if (query.length == 29) { query+= ' WHERE'}
+        if (query.length == 29) { query+= ' WHERE'; queryCount += 'WHERE'}
         query += ' (';
+        queryCount += '(';
 
         for (var i = 0; i < facility.length; i++){
             if (i !== facility.length - 1) {
                 query += '`facility`=\'' + facility[i] + '\' OR ';
+                queryCount += '`facility`=\'' + facility[i] + '\' OR ';
             } if (i === facility.length - 1) {
                 query += '`facility`=\'' + facility[i] + '\') ';
+                queryCount += '`facility`=\'' + facility[i] + '\') ';
+            }
+        }
+    }
+
+    if (activity != undefined) {
+
+        if (query.length == 29) { query+= ' WHERE'; queryCount += 'WHERE'} else { query += ' AND'; queryCount += ' AND'}
+        query += ' (';
+        queryCount += ' (';
+
+        for (var i = 0; i < activity.length; i++){
+            if (i !== activity.length - 1) {
+                query += '`activity`=\'' + activity[i] + '\' OR ';
+                queryCount += '`facility`=\'' + activity[i] + '\' OR ';
+            } if (i === activity.length - 1) {
+                query += '`activity`=\'' + activity[i] + '\') ';
+                queryCount += '`activity`=\'' + activity[i] + '\') ';
             }
         }
     }
 
     if (day != undefined) {
 
-        query.length == 29 ? query+= ' WHERE' : query += ' AND'
+        if (query.length == 29) { query+= ' WHERE'; queryCount += 'WHERE'} else { query += ' AND'; queryCount += ' AND'}
         query += ' (';
+        queryCount += ' (';
 
         for (var i = 0; i < day.length; i++){
             if (i !== day.length - 1) {
                 query += ' DAYOFWEEK(`date`)=' + day[i] + ' OR';
+                queryCount += ' DAYOFWEEK(`date`)=' + day[i] + ' OR';
             } if (i === day.length - 1) {
                 query += ' DAYOFWEEK(`date`)=' + day[i] + ')';
+                queryCount += ' DAYOFWEEK(`date`)=' + day[i] + ')';
             }
         }
     }
     
     if (startTime != undefined) {
-
-        query.length == 29 ? query+= ' WHERE' : query += ' AND'
-        query += ' (`startTime` > CAST(+\'' + startTime + '\' AS time) AND `endTime` < CAST(\'' + endTime + '\' AS time))';
+        if (query.length == 29) { query+= ' WHERE'; queryCount += 'WHERE'} else { query += ' AND'; queryCount += ' AND'}
+        query += ' (`startTime` > CAST(+' + startTime + ' AS time) AND `endTime` < CAST(' + endTime + ' AS time))';
+        queryCount += ' (`startTime` > CAST(+' + startTime + ' AS time) AND `endTime` < CAST(' + endTime + ' AS time))';
     }
 
     if (order == undefined) {
         query += ' ORDER BY `date` ASC LIMIT ' + start + ', ' + amount
+        queryCount += ' ORDER BY `date` ASC LIMIT ' + start + ', ' + amount
     } else if (order != undefined) {
         query += ' ORDER BY `' + table + '` ' + order + ' LIMIT ' + start + ', ' + amount
+        queryCount += ' ORDER BY `' + table + '` ' + order + ' LIMIT ' + start + ', ' + amount
     }
     
-    return query;
+    return {query, queryCount};
 }
 
-// console.log(formQuery(0, 10, 'ASC', 'date', ['facilityA', 'facilityB'], undefined, undefined, undefined))
+// console.log(formQuery(0, 10, 'ASC', 'date', ['Nepean Sportsplex', 'Richcraft Recreation Complex-Kanata'], [1,3,5], '10:00:00', '15:00:00'))
 
 /**
  * Formats values into a list
@@ -186,6 +212,15 @@ var formatValues = (values) => values.split(',');
 /** 
  * Formats data from the mysql object into a list of entries
  */
+var formatResults = (data, results, filter = undefined) => {
+    return new Promise((resolve, reject) => {
+        formatData(data, results, filter)
+        if (filter == undefined) {
+           resolve(data) 
+        }
+    })
+}
+
 var formatData = (data, results, filter = undefined) => {
     if (filter != undefined) {
         data[filter] = [];
@@ -204,13 +239,4 @@ var formatData = (data, results, filter = undefined) => {
     }
 
     return data;
-}
-
-var formatResults = (data, results, filter = undefined) => {
-    return new Promise((resolve, reject) => {
-        formatData(data, results, filter)
-        if (filter == undefined) {
-           resolve(data) 
-        }
-    })
 }
