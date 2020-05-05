@@ -99,8 +99,10 @@ app.get('/query', (req, res) => {
 
     var data = {
         'status code': 200,
-        'amount': 0,
-        'total': 0
+        'amountInPage': 0,
+        'total': 0,
+        'page': Number(start),
+        'totalPages': 0
     }
 
     var query = formQuery(start, amount, order, table, facility, day, startTime, endTime, activity)     
@@ -110,7 +112,8 @@ app.get('/query', (req, res) => {
         data['data'] = [];
         formatResults(data, results).then((data) => {
             connection.query(query.queryCount, (err, res2) => {
-                data['total'] = res2[0]['COUNT(*)'];
+                data['total'] = Number(res2[0]['COUNT(*)']);
+                data.totalPages = Math.ceil(data.total + data.amount);
                 res.json(data)
             })
         })
@@ -130,12 +133,12 @@ app.get('/query', (req, res) => {
  * @param {String} endTime in HH:MM:SS format
  */
 var formQuery = (start, amount, order, table, facility, day, startTime, endTime, activity) => {
-    var query = 'SELECT * FROM `schedule2020` '
-    var queryCount = 'SELECT COUNT(*) FROM `schedule2020` '
+    var query = 'SELECT * FROM `schedule2020` NATURAL JOIN `facility`'
+    var queryCount = 'SELECT COUNT(*) FROM `schedule2020` NATURAL JOIN `facility`'
 
     if (facility != undefined) {
         
-        if (query.length == 29) { query+= ' WHERE'; queryCount += 'WHERE'}
+        if (query.length == 52) { query+= ' WHERE'; queryCount += 'WHERE'} else { query += ' AND'; queryCount += ' AND'}
         query += ' (';
         queryCount += '(';
 
@@ -152,7 +155,7 @@ var formQuery = (start, amount, order, table, facility, day, startTime, endTime,
 
     if (activity != undefined) {
 
-        if (query.length == 29) { query+= ' WHERE'; queryCount += 'WHERE'} else { query += ' AND'; queryCount += ' AND'}
+        if (query.length == 59) { query+= ' WHERE'; queryCount += 'WHERE'} else { query += ' AND'; queryCount += ' AND'}
         query += ' (';
         queryCount += ' (';
 
@@ -169,7 +172,7 @@ var formQuery = (start, amount, order, table, facility, day, startTime, endTime,
 
     if (day != undefined) {
 
-        if (query.length == 29) { query+= ' WHERE'; queryCount += 'WHERE'} else { query += ' AND'; queryCount += ' AND'}
+        if (query.length == 59) { query+= ' WHERE'; queryCount += 'WHERE'} else { query += ' AND'; queryCount += ' AND'}
         query += ' (';
         queryCount += ' (';
 
@@ -185,7 +188,7 @@ var formQuery = (start, amount, order, table, facility, day, startTime, endTime,
     }
     
     if (startTime != undefined) {
-        if (query.length == 29) { query+= ' WHERE'; queryCount += 'WHERE'} else { query += ' AND'; queryCount += ' AND'}
+        if (query.length == 59) { query+= ' WHERE'; queryCount += 'WHERE'} else { query += ' AND'; queryCount += ' AND'}
         query += ' (`startTime` > CAST(+' + startTime + ' AS time) AND `endTime` < CAST(' + endTime + ' AS time))';
         queryCount += ' (`startTime` > CAST(+' + startTime + ' AS time) AND `endTime` < CAST(' + endTime + ' AS time))';
     }
@@ -202,6 +205,7 @@ var formQuery = (start, amount, order, table, facility, day, startTime, endTime,
 }
 
 // console.log(formQuery(0, 10, 'ASC', 'date', ['Nepean Sportsplex', 'Richcraft Recreation Complex-Kanata'], [1,3,5], '10:00:00', '15:00:00'))
+//http://127.0.0.1:3000/query?start=0&amount=10&table=date&order=DESC&facility=Nepean%20Sportsplex,Richcraft%20Recreation%20Complex-Kanata&activity=Pickleball&day=1,3&starttime=%2710:00:00%27&endtime=%2716:00:00%27
 
 /**
  * Formats values into a list
@@ -233,10 +237,25 @@ var formatData = (data, results, filter = undefined) => {
         results = results.map(v => Object.assign({}, v));
         results.forEach(element => {
             results.forEach(element => { element.date = String(element.date).substring(0,15) });
+            facility = {
+                'name': element.facility,
+                'address': element.address,
+                'link': element.link,
+                'lat': element.lat,
+                'lng': element.lng
+            }
+            delete element['name']
+            delete element['address']
+            delete element['link']
+            delete element['lat']
+            delete element['lng']
+            element['facility'] = facility; 
             data.data.push(element);
             data.amount++;
         });
     }
+    data.data.total;
+    data.data.amount;
 
     return data;
 }
